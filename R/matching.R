@@ -1,11 +1,12 @@
 
 # define the graphql query as a static string that we param
-graphql_match_query = "query NameMatch($searchString: String)
+graphql_match_query = "query NameMatch($searchString: String, $fallbackToGenus: Boolean)
 {
   taxonNameMatch(
     inputString: $searchString
     checkHomonyms: false
     checkRank: false
+    fallbackToGenus: $fallbackToGenus
   ) {
     inputString
     searchString
@@ -34,7 +35,6 @@ graphql_match_query = "query NameMatch($searchString: String)
 #'
 #' @return List containing data about the matched name or null
 #' @export
-#'
 #' @examples
 #' match_name("Rhododendron ponticum")
 match_name <- function(search_string = "", fallback_to_genus = FALSE, interactive = TRUE){
@@ -95,38 +95,37 @@ pick_name_from_list <- function(candidates, search_string, offset = 0, page_size
     if(grepl("^wfo-[0-9]{10}$", input)) return(input)
 
     # fall through to giving up - check they want to
-    user_input <- readline("Do you want to give up on this name? (y/n)  ")
-    if(tolower(user_input) != 'y'){
+    user_input <- readline("Do you want to give up on matching? (y/n)  ")
+    if(!tolower(user_input) == 'y'){
       # they don't want to quit
       return(pick_name_from_list(candidates, search_string, offset, page_size))
     }else{
       return(NULL) # get out of here with nothing - they have given up
     }
-
-
   }
-
-
-
 
 }
 
 #' Call the api for a name match
 #'
-#' @param search_string
-#' @param fallback_to_genus
+#' @param search_string The taxon name to be searched on
+#' @param fallback_to_genus True if a match at genus level will do
 #'
-#' @return
+#' @return List or String or Null
 #'
 #' @examples
+#' match_name("Rhododendron ponticum L")
+#' match_name("Rhododendron ponticum")
+#' match_name("Rhododendron pontica")
 call_name_match_api <- function(search_string = "", fallback_to_genus = FALSE){
 
   # create a request object
   req <- httr2::request(paste(unlist(options("wfo.api_uri")[1]),collapse=""))
 
   # prepare the body
-  variables <- list(searchString = search_string)
+  variables <- list(searchString = search_string, fallbackToGenus = fallback_to_genus)
   payload <- list(query = graphql_match_query, variables = variables)
+
 
   # set the body
   req <- httr2::req_body_json(req, data = payload, auto_unbox = TRUE)

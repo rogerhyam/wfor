@@ -17,3 +17,6 @@ Suggests:
 Config/testthat/edition: 3
 Imports: 
     httr2
+Depends: 
+    R (>= 2.10)
+LazyData: true

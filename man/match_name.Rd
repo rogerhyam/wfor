@@ -4,7 +4,7 @@
 \alias{match_name}
 \title{Match a single name string against the API}
 \usage{
-match_name(search_string = "", fallback_to_genus = FALSE)
+match_name(search_string = "", fallback_to_genus = FALSE, interactive = TRUE)
 }
 \arguments{
 \item{search_string}{The string representation of the plant name from the data.}
@@ -12,7 +12,7 @@ match_name(search_string = "", fallback_to_genus = FALSE)
 \item{fallback_to_genus}{If an exact match is not found then fallback to matching a genus}
 }
 \value{
-DataFrame containing matching results from API
+List containing data about the matched name or null
 }
 \description{
 Match a single name string against the API

@@ -3,7 +3,7 @@
 
 # wfor
 
-This is mainly boiler plate. End of day.
+FIXME: THIS IS BOILER PLATE STILL
 
 <!-- badges: start -->
 <!-- badges: end -->
@@ -31,11 +31,9 @@ This is a basic example which shows you how to solve a common problem:
 
 ``` r
 library(wfor)
-#> 
-#> Attaching package: 'wfor'
-#> The following object is masked from 'package:base':
-#> 
-#>     match
+#> Welcome to the World Flora Online Plant List Package
+#>  The default API URI is stored in options("wfo.api_uri")
+#>  and can be overridden if needed.
 ## basic example code
 ```
 
