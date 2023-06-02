@@ -1,3 +1,11 @@
+# we create an environment for the package so that we can cache
+# variables for at least the duration of the session
+the <- new.env(parent = emptyenv())
+
+# the name cache keeps a mapping between name strings and matched name
+# objects so we don't need to call the API for strings we have resolved
+# already in this session
+the$wfo_name_cache <- list()
 
 # define the graphql query as a static string that we param
 graphql_match_query = "query NameMatch($searchString: String, $fallbackToGenus: Boolean)
@@ -27,6 +35,98 @@ graphql_match_query = "query NameMatch($searchString: String, $fallbackToGenus: 
   }
 }"
 
+
+#' Match names in a data frame
+#'
+#' @param df
+#' @param fallback_to_genus
+#' @param interactive
+#'
+#' @return
+#' @export
+#'
+#' @examples
+match_df_names <- function(df, name_col, authors_col = NULL, fallback_to_genus = FALSE, interactive = TRUE){
+
+  # check the name column exists
+  if(!name_col %in% colnames(df)){
+    cat(sprintf("There is no column called '%s' in the data frame.", name_col ))
+    return(NULL)
+  }
+
+  # check the authors exist if they supply one
+  if(!is.null(authors_col) && !authors_col %in% colnames(df)){
+    cat(sprintf("There is no column called '%s' in the data frame.", authors_col ))
+    return(NULL)
+  }
+
+  # Check if the df has the wfo_ columns in it or not
+  if(!"wfo_id" %in% colnames(df)){
+    df$wfo_id <- ""
+    cat("Added wfo_id column to the dataframe.\n")
+  }
+  if(!"wfo_name" %in% colnames(df)){
+    df$wfo_name <- ""
+    cat("Added wfo_name column to the dataframe. This will contain the full name as in the WFO Plant List\n")
+  }
+  if(!"wfo_path" %in% colnames(df)){
+    df$wfo_path <- ""
+    cat("Added wfo_path column to the dataframe. This will contain the current status of the name in the WFO Plant List as a sanity check.\n")
+  }
+  if(!"wfo_method" %in% colnames(df)){
+    df$wfo_method <- ""
+    cat("Added wfo_method column to the dataframe. This will contain an indication of how the name was matched.\n")
+  }
+
+  # Work through the df and fill in the values
+
+  for (i in 1:nrow(df)) {
+
+    # if we have already done this row then we just go to the next one
+    if(grepl("^wfo-[0-9]{10}$", df[i, "wfo_id"]) || df[i, "wfo_id"] == "SKIP" ) next
+
+    # get the name string to look up
+    name_string <- df[i, name_col]
+
+    # if a separate authors column is specified
+    # concatenate that onto it
+    if(!is.null(authors_col)){
+      name_string <- paste(name_string, df[i, authors_col])
+    }
+
+    # Do we have the results cached already?
+    if (name_string %in% names(the$wfo_name_cache) ){
+      n <- the$wfo_name_cache[name_string]
+      df[i, "wfo_id"] <- n$id
+      # FIXME other fields
+      next
+    }
+
+    # actually do the matching
+    resp <- match_name(name_string, fallback_to_genus, interactive)
+
+    # Did we find nothing? Just carry on
+    if(is.null(resp)) break
+
+    # Have we been asked to skip?
+    if(is.character(resp) && resp == "SKIP"){
+      df[i, "wfo_id"] <- "SKIP"
+      next
+    }
+
+    # Did it return a matched name?
+    if(is.list(resp)){
+      df[i, "wfo_id"] <- resp$id
+      # FIXME other fields
+      # put it in the cache so we don't look it up again.
+      the$wfo_name_cache[name_string] <- resp
+    }
+
+  } # through the rows in the df
+
+  return(df)
+
+}
 
 #' Match a single name string against the API
 #'
