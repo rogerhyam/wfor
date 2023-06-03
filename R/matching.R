@@ -141,7 +141,7 @@ wfo_match_df_names <- function(df, name_col, authors_col = NULL, fallback_to_gen
       df[i, "wfo_method"] <- resp$method
       # put it in the cache so we don't look it up again.
       the$wfo_name_cache[name_string] <- list(resp)
-      cat(sprintf("%s\t from API\n", resp$id ))
+      cat(sprintf("%s\t %s\n", resp$id, resp$method ))
     }
 
   } # through the rows in the df
@@ -184,7 +184,7 @@ report_cache_status <- function(){
 #' wfo_match_name("Rhododendron ponticum")
 wfo_match_name <- function(search_string = "", fallback_to_genus = FALSE, interactive = TRUE){
 
-  response <- call_name_match_api(search_string = search_string, fallback_to_genus = FALSE)
+  response <- call_name_match_api(search_string = search_string, fallback_to_genus = fallback_to_genus)
 
   match <- response$data$taxonNameMatch$match;
 
@@ -214,11 +214,13 @@ pick_name_from_list <- function(candidates, search_string, offset = 0, page_size
   cat(sprintf("\nMatching string:\t%s\n", search_string ))
 
   for (i in start_page:end_page) {
-    line <- sprintf("%i\t%s\t%s  [%s]\n",
-                    i,
+    line <- sprintf("%s%s\t%s\t%s\t\t%s\n",
+                    stringr::str_pad(as.character(i), 4, "right"),
                     candidates[[i]]$id,
                     candidates[[i]]$fullNameStringPlain,
-                    candidates[[i]]$role)
+                    candidates[[i]]$role,
+                    candidates[[i]]$wfoPath
+                    )
     cat(line)
   }
 
@@ -288,6 +290,19 @@ call_name_match_api <- function(search_string = "", fallback_to_genus = FALSE){
   # return the whole thing as a list of lists
   httr2::resp_body_json(resp)
 
+}
+
+#' Clear skipped rows
+#'
+#' @param df The data frame for the skips to be cleared from
+#'
+#' @return The updated data frame
+#' @export
+#'
+#' @examples
+wfo_clear_skips <- function(df){
+  df$wfo_id[df$wfo_id == "SKIP"] <- ""
+  return(df)
 }
 
 #' Returns the name cache created in this session
