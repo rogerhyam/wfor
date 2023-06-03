@@ -10,3 +10,7 @@ test_that("Call API for known non-match but genus does match", {
   expect_equal(call_name_match_api("Rhododendron cake Hyam", fallback_to_genus = TRUE)$data$taxonNameMatch$match$id, "wfo-4000033027")
 })
 
+test_that("Call correct match method returned", {
+  expect_equal(wfo_match_name("Rhododendron ponticum L.")$method, "AUTO")
+})
+

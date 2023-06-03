@@ -18,7 +18,5 @@ List or String or Null
 Call the api for a name match
 }
 \examples{
-match_name("Rhododendron ponticum L")
-match_name("Rhododendron ponticum")
-match_name("Rhododendron pontica")
+call_name_match_api("Rhododendron ponticum L")
 }

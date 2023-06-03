@@ -22,11 +22,13 @@ graphql_match_query = "query NameMatch($searchString: String, $fallbackToGenus: 
       id
       fullNameStringPlain
       role
+      wfoPath
     }
     candidates {
       id
       fullNameStringPlain
       role
+      wfoPath
     }
     error
     errorMessage
@@ -46,7 +48,7 @@ graphql_match_query = "query NameMatch($searchString: String, $fallbackToGenus: 
 #' @export
 #'
 #' @examples
-match_df_names <- function(df, name_col, authors_col = NULL, fallback_to_genus = FALSE, interactive = TRUE){
+wfo_match_df_names <- function(df, name_col, authors_col = NULL, fallback_to_genus = FALSE, interactive = TRUE){
 
   # check the name column exists
   if(!name_col %in% colnames(df)){
@@ -79,7 +81,7 @@ match_df_names <- function(df, name_col, authors_col = NULL, fallback_to_genus =
   }
 
   # Work through the df and fill in the values
-
+  row_count = nrow(df)
   for (i in 1:nrow(df)) {
 
     # if we have already done this row then we just go to the next one
@@ -94,38 +96,81 @@ match_df_names <- function(df, name_col, authors_col = NULL, fallback_to_genus =
       name_string <- paste(name_string, df[i, authors_col])
     }
 
+    cat(sprintf("%i of %i\t%s\t", i, row_count, stringr::str_pad(name_string, 60, "right") ))
+
     # Do we have the results cached already?
     if (name_string %in% names(the$wfo_name_cache) ){
       n <- the$wfo_name_cache[name_string]
-      df[i, "wfo_id"] <- n$id
+      df[i, "wfo_id"] <- n[[1]]$id
+      df[i, "wfo_name"] <- n[[1]]$fullNameStringPlain
+      df[i, "wfo_path"] <- n[[1]]$wfoPath
+      df[i, "wfo_method"] <- n[[1]]$method
       # FIXME other fields
+      cat(sprintf("%s\t from CACHE\n", n[[1]]$id ))
       next
     }
 
     # actually do the matching
-    resp <- match_name(name_string, fallback_to_genus, interactive)
+    resp <- wfo_match_name(name_string, fallback_to_genus, interactive)
 
-    # Did we find nothing? Just carry on
-    if(is.null(resp)) break
+    # Did we find nothing?
+    if(is.null(resp)){
+      if(interactive){
+        cat("STOPPED\n")
+        break # in interactive mode this is a signal to stop
+      }else{
+        cat("No match. Continuing.\n")
+        next # in non-interactive mode we just carry on to the next one
+      }
+    }
 
     # Have we been asked to skip?
     if(is.character(resp) && resp == "SKIP"){
       df[i, "wfo_id"] <- "SKIP"
+      cat("SKIPPED\n")
       next
     }
+
+    # FIXME they may have returned a wfo id entered manually
 
     # Did it return a matched name?
     if(is.list(resp)){
       df[i, "wfo_id"] <- resp$id
-      # FIXME other fields
+      df[i, "wfo_name"] <- resp$fullNameStringPlain
+      df[i, "wfo_path"] <- resp$wfoPath
+      df[i, "wfo_method"] <- resp$method
       # put it in the cache so we don't look it up again.
-      the$wfo_name_cache[name_string] <- resp
+      the$wfo_name_cache[name_string] <- list(resp)
+      cat(sprintf("%s\t from API\n", resp$id ))
     }
 
   } # through the rows in the df
 
+  report_cache_status()
+
   return(df)
 
+}
+
+#' Report on the name cache status
+#' recommending that it is saved
+#'
+#' @return NULL
+#'
+#' @examples
+#' report_cache_status()
+report_cache_status <- function(){
+  if(length(the$wfo_name_cache) > 100 ){
+    cat("\n--- Name Cache Status ---")
+    cat(sprintf("\nThe cache contains %s name strings.", format(length(the$wfo_name_cache), big.mark=",")  ))
+    cat("\nConsider saving a copy of the cache so you can use it in the next session.")
+    cat("\nThis will preserve all the mapping decisions you have made, reduce load on")
+    cat("\nthe server and be quicker to run future matches.")
+    cat("\n\t> my_name_cache <- wfo_get_name_cache()")
+    cat("\n\t... in another session ...")
+    cat("\n\t> wfo_set_name_cache(my_name_cache)")
+    cat("\n")
+  }
 }
 
 #' Match a single name string against the API
@@ -136,16 +181,22 @@ match_df_names <- function(df, name_col, authors_col = NULL, fallback_to_genus =
 #' @return List containing data about the matched name or null
 #' @export
 #' @examples
-#' match_name("Rhododendron ponticum")
-match_name <- function(search_string = "", fallback_to_genus = FALSE, interactive = TRUE){
+#' wfo_match_name("Rhododendron ponticum")
+wfo_match_name <- function(search_string = "", fallback_to_genus = FALSE, interactive = TRUE){
 
   response <- call_name_match_api(search_string = search_string, fallback_to_genus = FALSE)
 
   match <- response$data$taxonNameMatch$match;
 
   # we don't have a match and we are in interactive mode so give a choice
-  if(is.null(match) && interactive){
-    match <- pick_name_from_list(response$data$taxonNameMatch$candidates, search_string)
+  if(is.null(match)){
+    if(interactive) match <- pick_name_from_list(response$data$taxonNameMatch$candidates, search_string)
+  }else{
+    if(fallback_to_genus){
+      match$method <- "AUTO GENUS"
+    }else{
+      match$method <- "AUTO"
+    }
   }
 
   return(match)
@@ -160,7 +211,7 @@ pick_name_from_list <- function(candidates, search_string, offset = 0, page_size
   if(end_page > length(candidates)) end_page = length(candidates)
   if(start_page < 1) start_page = 1
 
-  cat(sprintf("Matching string:\t%s\n", search_string ))
+  cat(sprintf("\nMatching string:\t%s\n", search_string ))
 
   for (i in start_page:end_page) {
     line <- sprintf("%i\t%s\t%s  [%s]\n",
@@ -181,7 +232,9 @@ pick_name_from_list <- function(candidates, search_string, offset = 0, page_size
   input_number = suppressWarnings(as.numeric(input))
   if( !is.na(input_number) && input_number >= start_page && input_number <= end_page){
     index <- as.integer(input)
-    return(candidates[[index]])
+    match <- candidates[[index]]
+    match$method <- "MANUAL"
+    return(match)
   }else{
 
     # paging
@@ -214,9 +267,7 @@ pick_name_from_list <- function(candidates, search_string, offset = 0, page_size
 #' @return List or String or Null
 #'
 #' @examples
-#' match_name("Rhododendron ponticum L")
-#' match_name("Rhododendron ponticum")
-#' match_name("Rhododendron pontica")
+#' call_name_match_api("Rhododendron ponticum L")
 call_name_match_api <- function(search_string = "", fallback_to_genus = FALSE){
 
   # create a request object
@@ -230,11 +281,43 @@ call_name_match_api <- function(search_string = "", fallback_to_genus = FALSE){
   # set the body
   req <- httr2::req_body_json(req, data = payload, auto_unbox = TRUE)
 
-  # actually run the requst
+  # actually run the request
   resp <- httr2::req_perform(req)
   #resp_content_type(resp)
 
   # return the whole thing as a list of lists
   httr2::resp_body_json(resp)
 
+}
+
+#' Returns the name cache created in this session
+#' Useful to prevent repeatedly looking up the same
+#' name string in the WFO API thus increasing speed.
+#'
+#' @return List of name objects
+#' @export
+#'
+#' @examples
+#' my_name_cache <- wfo_get_name_cache()
+#' ... in another session ...
+#' wfo_set_name_cache(my_name_cache)
+wfo_get_name_cache <- function(){
+  return(the$wfo_name_cache)
+}
+
+#' Set the name cache to be used in this session.
+#' Useful to prevent repeatedly looking up the same
+#' name string in the WFO API thus increasing speed.
+#'
+#' @param name_cache The new name cache
+#' @return NULL
+#' @export
+#'
+#' @examples
+#' my_name_cache <- wfo_get_name_cache()
+#' ... in another session ...
+#' wfo_set_name_cache(my_name_cache)
+wfo_set_name_cache <- function(name_cache){
+  the$wfo_name_cache <- name_cache
+  return(invisible(NULL))
 }
