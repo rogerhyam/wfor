@@ -3,8 +3,10 @@
 \name{wfo_set_name_cache}
 \alias{wfo_set_name_cache}
 \title{Set the name cache to be used in this session.
-Useful to prevent repeatedly looking up the same
-name string in the WFO API thus increasing speed.}
+Useful to prevent repeatedly resolving issues and
+looking up the same name string in the WFO API
+thus increasing speed and consistency.
+Use with \code{\link[=wfo_set_name_cache]{wfo_set_name_cache()}}}
 \usage{
 wfo_set_name_cache(name_cache)
 }
@@ -13,11 +15,13 @@ wfo_set_name_cache(name_cache)
 }
 \description{
 Set the name cache to be used in this session.
-Useful to prevent repeatedly looking up the same
-name string in the WFO API thus increasing speed.
+Useful to prevent repeatedly resolving issues and
+looking up the same name string in the WFO API
+thus increasing speed and consistency.
+Use with \code{\link[=wfo_set_name_cache]{wfo_set_name_cache()}}
 }
 \examples{
-my_name_cache <- wfo_get_name_cache()
-... in another session ...
-wfo_set_name_cache(my_name_cache)
+`my_name_cache <- wfo_get_name_cache()`
+# ... in another session ...
+`wfo_set_name_cache(my_name_cache)`
 }

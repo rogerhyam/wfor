@@ -5,7 +5,7 @@
 \title{Match a single name string against the API}
 \usage{
 wfo_match_name(
-  search_string = "",
+  search_string = NA,
   fallback_to_genus = FALSE,
   interactive = TRUE
 )
@@ -14,6 +14,10 @@ wfo_match_name(
 \item{search_string}{The string representation of the plant name from the data.}
 
 \item{fallback_to_genus}{If an exact match is not found then fallback to matching a genus}
+
+\item{interactive}{A boolean.
+If TRUE (the default) then script will stop and present a pick list if a precise match can't be found.
+If FALSE then script will just continue to the next row if no unambiguous match is found.}
 }
 \value{
 List containing data about the matched name or null
@@ -22,5 +26,5 @@ List containing data about the matched name or null
 Match a single name string against the API
 }
 \examples{
-wfo_match_name("Rhododendron ponticum")
+`wfo_match_name("Rhododendron ponticum")`
 }

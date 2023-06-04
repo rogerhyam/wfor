@@ -40,14 +40,33 @@ graphql_match_query = "query NameMatch($searchString: String, $fallbackToGenus: 
 
 #' Match names in a data frame
 #'
-#' @param df
-#' @param fallback_to_genus
-#' @param interactive
+#' @param df The source data.frame. The script will return a copy of this with changes made.
+#' @param name_col A string. REQUIRED. The name of the column in the data frame that contains the plant name to be matched.
+#'     If the column values do not include the author strings for the plant names then a authors_col should be
+#'     specified.
+#' @param authors_col A string. The name of the column containing the authors for the plant name, if they
+#'     are not included in the name_col column.
+#' @param fallback_to_genus A boolean.
+#'     If TRUE and no unambiguous match is found for the an attempt will be made to match the first word
+#'     of the name string to a genus.
+#'     If FALSE (the default) the whole string has to find an unambiguous match.
+#' @param interactive A boolean.
+#'     If TRUE (the default) then script will stop and present a pick list if a precise match can't be found.
+#'     If FALSE then script will just continue to the next row if no unambiguous match is found.
 #'
-#' @return
+#' @return A data.frame with the wfo_* columns populated.
 #' @export
 #'
 #' @examples
+#' # auto match the Belgian Magnoliopsida test data
+#' `mags_example <- wfo_match_df_names(Belgian_Magnoliopsida_sp_ssp_var_2011, name_col="scientific_name", authors_col="authorship", interactive=FALSE)`
+#' # check how many  have been matched using the [wfo_stat_matches()] function.
+#' `wfo_stat_matches(mags_example)`
+#' # do a second pass interactively to resolve unmatched names (or until you get tired)
+#' `mags_example <- wfo_match_df_names(mags_example, name_col="scientific_name", authors_col="authorship", interactive=TRUE)`
+#' # do a third pass matching names to the nearest genus
+#' `mags_example <- wfo_match_df_names(mags_example, name_col="scientific_name", authors_col= "authorship", fallback_to_genus=TRUE)`
+#'
 wfo_match_df_names <- function(df, name_col, authors_col = NULL, fallback_to_genus = FALSE, interactive = TRUE){
 
   # check the name column exists
@@ -64,19 +83,19 @@ wfo_match_df_names <- function(df, name_col, authors_col = NULL, fallback_to_gen
 
   # Check if the df has the wfo_ columns in it or not
   if(!"wfo_id" %in% colnames(df)){
-    df$wfo_id <- ""
+    df$wfo_id <- NA
     cat("Added wfo_id column to the dataframe.\n")
   }
   if(!"wfo_name" %in% colnames(df)){
-    df$wfo_name <- ""
+    df$wfo_name <- NA
     cat("Added wfo_name column to the dataframe. This will contain the full name as in the WFO Plant List\n")
   }
   if(!"wfo_path" %in% colnames(df)){
-    df$wfo_path <- ""
+    df$wfo_path <- NA
     cat("Added wfo_path column to the dataframe. This will contain the current status of the name in the WFO Plant List as a sanity check.\n")
   }
   if(!"wfo_method" %in% colnames(df)){
-    df$wfo_method <- ""
+    df$wfo_method <- NA
     cat("Added wfo_method column to the dataframe. This will contain an indication of how the name was matched.\n")
   }
 
@@ -85,7 +104,8 @@ wfo_match_df_names <- function(df, name_col, authors_col = NULL, fallback_to_gen
   for (i in 1:nrow(df)) {
 
     # if we have already done this row then we just go to the next one
-    if(grepl("^wfo-[0-9]{10}$", df[i, "wfo_id"]) || df[i, "wfo_id"] == "SKIP" ) next
+    # if(grepl("^wfo-[0-9]{10}$", df[i, "wfo_id"]) || df[i, "wfo_id"] == "SKIP" ) next
+    if(!is.na(df[i, "wfo_id"])) next
 
     # get the name string to look up
     name_string <- df[i, name_col]
@@ -156,9 +176,9 @@ wfo_match_df_names <- function(df, name_col, authors_col = NULL, fallback_to_gen
 #' recommending that it is saved
 #'
 #' @return NULL
-#'
+#' @noRd
 #' @examples
-#' report_cache_status()
+#' `report_cache_status()`
 report_cache_status <- function(){
   if(length(the$wfo_name_cache) > 100 ){
     cat("\n--- Name Cache Status ---")
@@ -177,12 +197,15 @@ report_cache_status <- function(){
 #'
 #' @param search_string The string representation of the plant name from the data.
 #' @param fallback_to_genus If an exact match is not found then fallback to matching a genus
+#' @param interactive A boolean.
+#'     If TRUE (the default) then script will stop and present a pick list if a precise match can't be found.
+#'     If FALSE then script will just continue to the next row if no unambiguous match is found.
 #'
 #' @return List containing data about the matched name or null
 #' @export
 #' @examples
-#' wfo_match_name("Rhododendron ponticum")
-wfo_match_name <- function(search_string = "", fallback_to_genus = FALSE, interactive = TRUE){
+#' `wfo_match_name("Rhododendron ponticum")`
+wfo_match_name <- function(search_string = NA, fallback_to_genus = FALSE, interactive = TRUE){
 
   response <- call_name_match_api(search_string = search_string, fallback_to_genus = fallback_to_genus)
 
@@ -202,6 +225,7 @@ wfo_match_name <- function(search_string = "", fallback_to_genus = FALSE, intera
   return(match)
 }
 
+# handles display and selection from a picklist
 pick_name_from_list <- function(candidates, search_string, offset = 0, page_size = 10){
 
   start_page <- offset + 1
@@ -211,6 +235,7 @@ pick_name_from_list <- function(candidates, search_string, offset = 0, page_size
   if(end_page > length(candidates)) end_page = length(candidates)
   if(start_page < 1) start_page = 1
 
+  cat("\n\n--- Pick a name ---")
   cat(sprintf("\nMatching string:\t%s\n", search_string ))
 
   for (i in start_page:end_page) {
@@ -267,10 +292,10 @@ pick_name_from_list <- function(candidates, search_string, offset = 0, page_size
 #' @param fallback_to_genus True if a match at genus level will do
 #'
 #' @return List or String or Null
-#'
+#' @noRd
 #' @examples
-#' call_name_match_api("Rhododendron ponticum L")
-call_name_match_api <- function(search_string = "", fallback_to_genus = FALSE){
+#' `call_name_match_api("Rhododendron ponticum L")`
+call_name_match_api <- function(search_string = NA, fallback_to_genus = FALSE){
 
   # create a request object
   req <- httr2::request(paste(unlist(options("wfo.api_uri")[1]),collapse=""))
@@ -299,39 +324,42 @@ call_name_match_api <- function(search_string = "", fallback_to_genus = FALSE){
 #' @return The updated data frame
 #' @export
 #'
-#' @examples
 wfo_clear_skips <- function(df){
-  df$wfo_id[df$wfo_id == "SKIP"] <- ""
+  df$wfo_id[df$wfo_id == "SKIP"] <- NA
   return(df)
 }
 
-#' Returns the name cache created in this session
-#' Useful to prevent repeatedly looking up the same
-#' name string in the WFO API thus increasing speed.
+#' Returns the name cache created in this session.
+#' Useful to prevent repeatedly resolving issues and
+#' looking up the same name string in the WFO API
+#' thus increasing speed and consistency.
+#' Use with [wfo_set_name_cache()]
 #'
 #' @return List of name objects
 #' @export
 #'
 #' @examples
-#' my_name_cache <- wfo_get_name_cache()
-#' ... in another session ...
-#' wfo_set_name_cache(my_name_cache)
+#' `my_name_cache <- wfo_get_name_cache()`
+#' # ... in another session ...
+#' `wfo_set_name_cache(my_name_cache)`
 wfo_get_name_cache <- function(){
   return(the$wfo_name_cache)
 }
 
 #' Set the name cache to be used in this session.
-#' Useful to prevent repeatedly looking up the same
-#' name string in the WFO API thus increasing speed.
+#' Useful to prevent repeatedly resolving issues and
+#' looking up the same name string in the WFO API
+#' thus increasing speed and consistency.
+#' Use with [wfo_set_name_cache()]
 #'
 #' @param name_cache The new name cache
 #' @return NULL
 #' @export
 #'
 #' @examples
-#' my_name_cache <- wfo_get_name_cache()
-#' ... in another session ...
-#' wfo_set_name_cache(my_name_cache)
+#' `my_name_cache <- wfo_get_name_cache()`
+#' # ... in another session ...
+#' `wfo_set_name_cache(my_name_cache)`
 wfo_set_name_cache <- function(name_cache){
   the$wfo_name_cache <- name_cache
   return(invisible(NULL))

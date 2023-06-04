@@ -13,8 +13,38 @@ wfo_match_df_names(
 )
 }
 \arguments{
-\item{interactive}{}
+\item{df}{The source data.frame. The script will return a copy of this with changes made.}
+
+\item{name_col}{A string. REQUIRED. The name of the column in the data frame that contains the plant name to be matched.
+If the column values do not include the author strings for the plant names then a authors_col should be
+specified.}
+
+\item{authors_col}{A string. The name of the column containing the authors for the plant name, if they
+are not included in the name_col column.}
+
+\item{fallback_to_genus}{A boolean.
+If TRUE and no unambiguous match is found for the an attempt will be made to match the first word
+of the name string to a genus.
+If FALSE (the default) the whole string has to find an unambiguous match.}
+
+\item{interactive}{A boolean.
+If TRUE (the default) then script will stop and present a pick list if a precise match can't be found.
+If FALSE then script will just continue to the next row if no unambiguous match is found.}
+}
+\value{
+A data.frame with the wfo_* columns populated.
 }
 \description{
 Match names in a data frame
+}
+\examples{
+# auto match the Belgian Magnoliopsida test data
+`mags_example <- wfo_match_df_names(Belgian_Magnoliopsida_sp_ssp_var_2011, name_col="scientific_name", authors_col="authorship", interactive=FALSE)`
+# check how many  have been matched using the [wfo_stat_matches()] function.
+`wfo_stat_matches(mags_example)`
+# do a second pass interactively to resolve unmatched names (or until you get tired)
+`mags_example <- wfo_match_df_names(mags_example, name_col="scientific_name", authors_col="authorship", interactive=TRUE)`
+# do a third pass matching names to the nearest genus
+`mags_example <- wfo_match_df_names(mags_example, name_col="scientific_name", authors_col= "authorship", fallback_to_genus=TRUE)`
+
 }

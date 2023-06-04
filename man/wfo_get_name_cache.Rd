@@ -2,9 +2,11 @@
 % Please edit documentation in R/matching.R
 \name{wfo_get_name_cache}
 \alias{wfo_get_name_cache}
-\title{Returns the name cache created in this session
-Useful to prevent repeatedly looking up the same
-name string in the WFO API thus increasing speed.}
+\title{Returns the name cache created in this session.
+Useful to prevent repeatedly resolving issues and
+looking up the same name string in the WFO API
+thus increasing speed and consistency.
+Use with \code{\link[=wfo_set_name_cache]{wfo_set_name_cache()}}}
 \usage{
 wfo_get_name_cache()
 }
@@ -12,12 +14,14 @@ wfo_get_name_cache()
 List of name objects
 }
 \description{
-Returns the name cache created in this session
-Useful to prevent repeatedly looking up the same
-name string in the WFO API thus increasing speed.
+Returns the name cache created in this session.
+Useful to prevent repeatedly resolving issues and
+looking up the same name string in the WFO API
+thus increasing speed and consistency.
+Use with \code{\link[=wfo_set_name_cache]{wfo_set_name_cache()}}
 }
 \examples{
-my_name_cache <- wfo_get_name_cache()
-... in another session ...
-wfo_set_name_cache(my_name_cache)
+`my_name_cache <- wfo_get_name_cache()`
+# ... in another session ...
+`wfo_set_name_cache(my_name_cache)`
 }

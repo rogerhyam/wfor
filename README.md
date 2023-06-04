@@ -1,19 +1,25 @@
 
 <!-- README.md is generated from README.Rmd. Please edit that file -->
 
-# wfor
-
-FIXME: THIS IS BOILER PLATE STILL
+# wfor - The World Flora Online Plant List R Package
 
 <!-- badges: start -->
 <!-- badges: end -->
 
-This package facilitates the reconciliation of multiple data sets
+## Purpose
+
+This R package facilitates the reconciliation of multiple data sets
 containing plant names to each other via standardised World Flora Online
 name IDs. This enables the merging of data based on a global, consensus
-taxonomy in a reproducible way. It will also a report on provenience of
+taxonomy in a reproducible way. It will also report on provenience of
 the name matching process and current taxonomy of the names used in the
 analysis for subsequent publication.
+
+## Status
+
+One round of development has created this minimum viable product. It
+still needs more work but you are welcome to have a play. We plan to
+submit an improved version to CRAN by the end of 2023 In sh’Allah!
 
 ## Installation
 
@@ -29,37 +35,13 @@ devtools::install_github("rogerhyam/wfor")
 
 This is a basic example which shows you how to solve a common problem:
 
-``` r
-library(wfor)
-#> Welcome to the World Flora Online Plant List Package
-#>  The default API URI is stored in options("wfo.api_uri")
-#>  and can be overridden if needed.
-## basic example code
-```
+    library(wfor)
 
-What is special about using `README.Rmd` instead of just `README.md`?
-You can include R chunks like so:
-
-``` r
-summary(cars)
-#>      speed           dist       
-#>  Min.   : 4.0   Min.   :  2.00  
-#>  1st Qu.:12.0   1st Qu.: 26.00  
-#>  Median :15.0   Median : 36.00  
-#>  Mean   :15.4   Mean   : 42.98  
-#>  3rd Qu.:19.0   3rd Qu.: 56.00  
-#>  Max.   :25.0   Max.   :120.00
-```
-
-You’ll still need to render `README.Rmd` regularly, to keep `README.md`
-up-to-date. `devtools::build_readme()` is handy for this. You could also
-use GitHub Actions to re-render `README.Rmd` every time you push. An
-example workflow can be found here:
-<https://github.com/r-lib/actions/tree/v1/examples>.
-
-You can also embed plots, for example:
-
-<img src="man/figures/README-pressure-1.png" width="100%" />
-
-In that case, don’t forget to commit and push the resulting figure
-files, so they display on GitHub and CRAN.
+    # auto match the Belgian Magnoliopsida test data
+    `mags_example <- wfo_match_df_names(Belgian_Magnoliopsida_sp_ssp_var_2011, name_col="scientific_name", authors_col="authorship", interactive=FALSE)`
+    # check how many  have been matched using the [wfo_stat_matches()] function.
+    `wfo_stat_matches(mags_example)`
+    # do a second pass interactively to resolve unmatched names (or until you get tired)
+    `mags_example <- wfo_match_df_names(mags_example, name_col="scientific_name", authors_col="authorship", interactive=TRUE)`
+    # do a third pass matching names to the nearest genus
+    `mags_example <- wfo_match_df_names(mags_example, name_col="scientific_name", authors_col= "authorship", fallback_to_genus=TRUE)`
