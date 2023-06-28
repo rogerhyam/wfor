@@ -17,6 +17,15 @@ analysis for subsequent publication.
 
 Think Reference Manager for plant names!
 
+There is an existing WFO R package in CRAN for standardizing plant names
+(<https://cran.r-project.org/web/packages/WorldFlora/index.html>). It
+differs from wfor in that it requires a download of the complete name
+list in Darwin Core format whilst wfor relies on calling the API of the
+latest version of the list. The existing package can also use other
+lists of names in Darwin Core format to match against. The two packages
+are complementary. Hopefully we will see yet more packages released that
+work with WFO data in different ways.
+
 ## Status
 
 One round of development has created this minimum viable product. It
